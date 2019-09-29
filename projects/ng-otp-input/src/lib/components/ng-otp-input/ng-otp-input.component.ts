@@ -34,15 +34,15 @@ export class NgOtpInputComponent implements OnInit, AfterViewInit {
     }
   }
   ngAfterViewInit(): void {
-    if (!this.config.disableAutoFocus) {
-      const containerItem = document.getElementById(`c_${this.componentKey}`);
-      if (containerItem) {
-        const ele: any = containerItem.getElementsByClassName('otp-input')[0];
-        if (ele && ele.focus) {
-          ele.focus();
-        }
+    // if (!this.config.disableAutoFocus) {
+    const containerItem = document.getElementById(`c_${this.componentKey}`);
+    if (containerItem) {
+      const ele: any = containerItem.getElementsByClassName('otp-input')[0];
+      if (ele && ele.focus) {
+        ele.focus();
       }
     }
+    // }
   }
   private getControlName(idx) {
     return `ctrl_${idx}`;
@@ -72,6 +72,9 @@ export class NgOtpInputComponent implements OnInit, AfterViewInit {
   }
 
   onKeyUp($event, inputIdx) {
+    if ($event.target.value.length > 1) {
+      $event.target.value = $event.target.value[0];
+    }
     const nextInputId = this.appendKey(`otp_${inputIdx + 1}`);
     const prevInputId = this.appendKey(`otp_${inputIdx - 1}`);
     if (this.ifRightArrow($event)) {
@@ -82,19 +85,32 @@ export class NgOtpInputComponent implements OnInit, AfterViewInit {
       this.setSelected(prevInputId);
       return;
     }
-    const isBackspace = this.ifBackspaceOrDelete($event);
-    if (isBackspace && !$event.target.value) {
-      this.setSelected(prevInputId);
-      this.rebuildValue();
-      return;
-    }
     if (!$event.target.value) {
       return;
     }
-    if (this.ifValidEntry($event)) {
+    if ($event.target.value.length > 1) {
+      $event.target.value = $event.target.value[0];
+    }
+    if (this.ifValidEntry($event) || $event.target.value.length === 1) {
       this.focusTo(nextInputId);
     }
     this.rebuildValue();
+  }
+
+  onKeyDown($event, inputIdx) {
+    const nextInputId = this.appendKey(`otp_${inputIdx + 1}`);
+    const prevInputId = this.appendKey(`otp_${inputIdx - 1}`);
+    const isBackspace = this.ifBackspaceOrDelete($event);
+    if (isBackspace) {
+      if (!$event.target.value) {
+        this.setSelected(prevInputId);
+      } else {
+        $event.target.value = null;
+      }
+      this.rebuildValue();
+      return false;
+    }
+    return true;
   }
 
   appendKey(id) {
@@ -103,33 +119,27 @@ export class NgOtpInputComponent implements OnInit, AfterViewInit {
 
   setSelected(eleId) {
     this.focusTo(eleId);
-    const ele: any = document.getElementById(eleId);
-    if (ele && ele.setSelectionRange) {
-      setTimeout(() => {
-        ele.setSelectionRange(0, 1);
-      }, 0);
-    }
+    // const ele: any = document.getElementById(eleId);
+    // if (ele && ele.setSelectionRange) {
+    //   setTimeout(() => {
+    //     ele.setSelectionRange(0, 1);
+    //   }, 0);
+    // }
   }
 
   ifValidEntry(event) {
     const inp = String.fromCharCode(event.keyCode);
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    return (
-      isMobile ||
-      /[a-zA-Z0-9-_]/.test(inp) ||
-      (this.config.allowKeyCodes &&
-        this.config.allowKeyCodes.includes(event.keyCode)) ||
-      (event.keyCode >= 96 && event.keyCode <= 105)
-    );
+    return (/[a-zA-Z0-9-_]/.test(inp));
   }
 
   focusTo(eleId) {
     const ele: any = document.getElementById(eleId);
     if (ele) {
+      ele.value = '';
       ele.focus();
-      setTimeout(() => {
-        ele.selectionStart = ele.selectionEnd = 100;
-      }, 0);
+      // setTimeout(() => {
+      //   ele.selectionStart = ele.selectionEnd = 100;
+      // }, 0);
     }
   }
 
@@ -137,6 +147,7 @@ export class NgOtpInputComponent implements OnInit, AfterViewInit {
     let val = '';
     this.keysPipe.transform(this.otpForm.controls).forEach(k => {
       if (this.otpForm.controls[k].value) {
+        console.log(this.otpForm.controls[k].value);
         val += this.otpForm.controls[k].value;
       }
     });
